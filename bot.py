@@ -129,7 +129,7 @@ def bale_polling():
                                             (tg_id, bale_chat_id, bale_chat_id)
                                         )
                                         conn.commit()
-                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"})
+                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"])
                                 try:
                                     app.send_message(tg_id, "✅ اتصال به بله با موفقیت انجام شد!")
                                 except:
@@ -249,6 +249,11 @@ async def callback_handler(client, callback_query):
 @app.on_message(filters.private & ~filters.command("start"))
 async def github_token_handler(client: Client, message: Message):
     tg_id = message.from_user.id
+
+    # Only process text messages
+    if not message.text:
+        return
+
     text = message.text.strip()
 
     # Accept both classic (ghp_) and fine-grained (github_pat_) tokens
