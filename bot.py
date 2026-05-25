@@ -52,6 +52,7 @@ upload_lock = Lock()
 app = Client("large_file_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 cancel_flags = {}
+waiting_for_github_token = {}  # user_id: True/False
 
 def get_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
@@ -216,6 +217,7 @@ async def callback_handler(client, callback_query):
         ]))
 
     elif data == "connect_github":
+        waiting_for_github_token[tg_id] = True
         await msg.edit_text(
             "🐙 **اتصال گیت‌هاب شخصی**\n\n"
             "توکن گیت‌هاب خود را بفرستید (با ghp_ یا github_pat_ شروع می‌شود):\n\n"
@@ -250,7 +252,10 @@ async def callback_handler(client, callback_query):
 async def github_token_handler(client: Client, message: Message):
     tg_id = message.from_user.id
 
-    # Only process text messages
+    # Only process if user is waiting for GitHub token
+    if not waiting_for_github_token.get(tg_id, False):
+        return
+
     if not message.text:
         return
 
@@ -286,6 +291,8 @@ async def github_token_handler(client: Client, message: Message):
                     )
                     conn.commit()
 
+            waiting_for_github_token[tg_id] = False  # Reset state
+
             await message.reply_text(
                 f"✅ **اتصال موفق!**\n\n"
                 f"گیت‌هاب شما ({github_username}) متصل شد.\n"
@@ -294,6 +301,7 @@ async def github_token_handler(client: Client, message: Message):
             )
         else:
             await message.reply_text("❌ توکن نامعتبر است. لطفاً دوباره تلاش کنید.")
+            waiting_for_github_token[tg_id] = False
 
 @app.on_message(
     (filters.document | filters.video | filters.audio | filters.voice | filters.photo) & filters.private
