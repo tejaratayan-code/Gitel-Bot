@@ -416,7 +416,6 @@ async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Mes
 
         file_size_mb = file_path.stat().st_size / (1024 * 1024)
 
-        # Stage 2: Compression
         await status_msg.edit_text(f"🗜 **در حال فشرده‌سازی** ({file_size_mb:.1f} MB)\n\nلطفاً صبر کنید...")
 
         with py7zr.SevenZipFile(zip_path, mode='w', password=password) as z:
@@ -427,7 +426,6 @@ async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Mes
             if zip_path.exists(): os.remove(zip_path)
             return
 
-        # Stage 3: Upload to GitHub
         await status_msg.edit_text("☁️ **در حال آپلود به گیت‌هاب شما**\n\nلطفاً صبر کنید...")
 
         headers = {
