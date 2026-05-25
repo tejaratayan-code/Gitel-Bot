@@ -234,7 +234,7 @@ async def download_handler(client: Client, message: Message):
         return
     file_name = getattr(file_attr, "file_name", f"file_{message.id}.jpg")
     destination = DOWNLOADS_PATH / file_name
-    status = await message.reply_text(f"🚀 در حال دانلود `{file_name}`...", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=f"cancel:{cancel_id}")]]))
+    status = await message.reply_text(f"🚀 در حال دانلود `{file_name}`...", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data="cancel:" + cancel_id)]]))
     status.start_time = time.time()
     status.prev_bytes = 0
     status.prev_time = time.time()
@@ -267,7 +267,7 @@ async def progress_callback(current, total, status_msg, file_name, file_size):
     eta = "—" if speed <= 0 else (f"{int((total-current)/speed)} ثانیه" if (total-current)/speed < 60 else f"{(total-current)/speed/60:.1f} دقیقه")
     try:
         text = f"📥 **دریافت فایل از تلگرام**\n\n[{bar}] {percent:.1f}%\n📦 {current / (1024*1024):.1f} MB از {total / (1024*1024):.1f} MB\n⚡ سرعت: {speed_mb:.2f} MB/s\n⏱ زمان باقی‌مانده: {eta}"
-        cancel_data = f"cancel:{status_msg.id}"
+        cancel_data = "cancel:" + str(status_msg.id)
         await status_msg.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=cancel_data)]])
     except:
         pass
