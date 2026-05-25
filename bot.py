@@ -215,8 +215,9 @@ async def github_token_handler(client: Client, message: Message):
             await message.reply_text("❌ توکن نامعتبر است. لطفاً دوباره تلاش کنید.")
             waiting_for_github_token[tg_id] = False
 
-@app.on_message((filters.document | filters.video | filters.audio | filters.voice | filters.photo) & filters.private)
+@app.on_message(filters.private & (filters.document | filters.video | filters.audio | filters.voice | filters.photo))
 async def download_handler(client: Client, message: Message):
+    print("[DEBUG] download_handler triggered")
     tg_id = message.from_user.id
     cancel_id = str(message.id)
     cancel_flags[cancel_id] = False
@@ -267,7 +268,7 @@ async def progress_callback(current, total, status_msg, file_name, file_size):
     try:
         text = f"📥 **دریافت فایل از تلگرام**\n\n[{bar}] {percent:.1f}%\n📦 {current / (1024*1024):.1f} MB از {total / (1024*1024):.1f} MB\n⚡ سرعت: {speed_mb:.2f} MB/s\n⏱ زمان باقی‌مانده: {eta}"
         cancel_data = f"cancel:{status_msg.id}"
-        await status_msg.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=cancel_data)]]))
+        await status_msg.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=cancel_data)]])
     except:
         pass
 
