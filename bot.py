@@ -69,7 +69,7 @@ def init_database():
                     file_count BIGINT DEFAULT 0,
                     last_reset_date DATE,
                     github_token TEXT,
-                    github_repo TEXT DEFAULT 'GitelUpload',
+                    github_repo VARCHAR(255) DEFAULT 'GitelUpload',
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
@@ -85,7 +85,7 @@ def init_database():
                 'file_count': 'BIGINT DEFAULT 0',
                 'last_reset_date': 'DATE',
                 'github_token': 'TEXT',
-                'github_repo': 'TEXT DEFAULT \'GitelUpload\''
+                'github_repo': 'VARCHAR(255) DEFAULT \'GitelUpload\''
             }
 
             for col, definition in columns.items():
@@ -479,7 +479,7 @@ async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Mes
 
         telegram_text = f"━━━ 🟢 🟢 آپلود موفق! 🎉 ━━━\n\nفایل `{file_name}` با موفقیت آپلود شد.\n\n🔗 لینک: {download_link}\n\n🔑 رمز: `{password}`\n\n📦 حجم: {size_mb:.1f} MB\n⏳ اعتبار تا: {expire_str}"
 
-        await client.send_message(chat_id, telegram_text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 返回 به منوی اصلی", callback_data="back_to_start")]]))
+        await client.send_message(chat_id, telegram_text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 بازگشت به منوی اصلی", callback_data="back_to_start")]]))
         await status_msg.edit_text("✅ آپلود به گیت‌هاب شما انجام شد.")
 
         if file_path.exists(): os.remove(file_path)
