@@ -126,7 +126,7 @@ def bale_polling():
                                     with conn.cursor() as cur:
                                         cur.execute("INSERT INTO connections (telegram_id, bale_id, connected) VALUES (%s, %s, TRUE) ON DUPLICATE KEY UPDATE bale_id=%s, connected=TRUE", (tg_id, bale_chat_id, bale_chat_id))
                                         conn.commit()
-                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"})
+                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"])
                                 try:
                                     app.send_message(tg_id, "✅ اتصال به بله با موفقیت انجام شد!")
                                 except:
@@ -328,7 +328,8 @@ async def progress_callback(current, total, status_msg, file_name, file_size):
     eta = "—" if speed <= 0 else (f"{int((total-current)/speed)} ثانیه" if (total-current)/speed < 60 else f"{(total-current)/speed/60:.1f} دقیقه")
 
     try:
-        await status_msg.edit_text(f"📥 **دریافت فایل از تلگرام**\n\n[{bar}] {percent:.1f}%\n📦 {current / (1024*1024):.1f} MB از {total / (1024*1024):.1f} MB\n⚡ سرعت: {speed_mb:.2f} MB/s\n⏱ زمان باقی‌مانده: {eta}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=f"cancel:{status_msg.id}")]])
+        text = f"📥 **دریافت فایل از تلگرام**\n\n[{bar}] {percent:.1f}%\n📦 {current / (1024*1024):.1f} MB از {total / (1024*1024):.1f} MB\n⚡ سرعت: {speed_mb:.2f} MB/s\n⏱ زمان باقی‌مانده: {eta}"
+        await status_msg.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=f"cancel:{status_msg.id}")]])
     except:
         pass
 
