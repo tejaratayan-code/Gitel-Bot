@@ -218,7 +218,7 @@ async def callback_handler(client, callback_query):
     elif data == "connect_github":
         await msg.edit_text(
             "🐙 **اتصال گیت‌هاب شخصی**\n\n"
-            "توکن گیت‌هاب خود را بفرستید (با ghp_ شروع می‌شود):\n\n"
+            "توکن گیت‌هاب خود را بفرستید (با ghp_ یا github_pat_ شروع می‌شود):\n\n"
             "⚠️ این توکن فقط برای آپلود فایل استفاده می‌شود و ذخیره می‌گردد."
         )
 
@@ -251,7 +251,8 @@ async def github_token_handler(client: Client, message: Message):
     tg_id = message.from_user.id
     text = message.text.strip()
 
-    if text.startswith("ghp_"):
+    # Accept both classic (ghp_) and fine-grained (github_pat_) tokens
+    if text.startswith("ghp_") or text.startswith("github_pat_"):
         headers = {"Authorization": f"token {text}", "Accept": "application/vnd.github.v3+json"}
         test = requests.get(f"{GITHUB_API}/user", headers=headers)
 
