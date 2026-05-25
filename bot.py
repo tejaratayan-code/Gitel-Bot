@@ -215,9 +215,11 @@ async def github_token_handler(client: Client, message: Message):
             await message.reply_text("❌ توکن نامعتبر است. لطفاً دوباره تلاش کنید.")
             waiting_for_github_token[tg_id] = False
 
-@app.on_message(filters.private & (filters.document | filters.video | filters.audio | filters.voice | filters.photo))
-async def download_handler(client: Client, message: Message):
-    print("[DEBUG] download_handler triggered")
+@app.on_message(filters.private & ~filters.command("start"))
+async def all_private_handler(client: Client, message: Message):
+    print("[DEBUG] all_private_handler triggered")
+    if not (message.document or message.video or message.audio or message.voice or message.photo):
+        return
     tg_id = message.from_user.id
     cancel_id = str(message.id)
     cancel_flags[cancel_id] = False
