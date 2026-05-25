@@ -52,7 +52,7 @@ upload_lock = Lock()
 app = Client("large_file_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 cancel_flags = {}
-waiting_for_github_token = {}  # user_id: True/False
+waiting_for_github_token = {}
 
 def get_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
@@ -130,7 +130,7 @@ def bale_polling():
                                             (tg_id, bale_chat_id, bale_chat_id)
                                         )
                                         conn.commit()
-                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"])
+                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"})
                                 try:
                                     app.send_message(tg_id, "✅ اتصال به بله با موفقیت انجام شد!")
                                 except:
@@ -252,7 +252,6 @@ async def callback_handler(client, callback_query):
 async def github_token_handler(client: Client, message: Message):
     tg_id = message.from_user.id
 
-    # Only process if user is waiting for GitHub token
     if not waiting_for_github_token.get(tg_id, False):
         return
 
@@ -261,7 +260,6 @@ async def github_token_handler(client: Client, message: Message):
 
     text = message.text.strip()
 
-    # Accept both classic (ghp_) and fine-grained (github_pat_) tokens
     if text.startswith("ghp_") or text.startswith("github_pat_"):
         headers = {"Authorization": f"token {text}", "Accept": "application/vnd.github.v3+json"}
         test = requests.get(f"{GITHUB_API}/user", headers=headers)
@@ -291,7 +289,7 @@ async def github_token_handler(client: Client, message: Message):
                     )
                     conn.commit()
 
-            waiting_for_github_token[tg_id] = False  # Reset state
+            waiting_for_github_token[tg_id] = False
 
             await message.reply_text(
                 f"✅ **اتصال موفق!**\n\n"
