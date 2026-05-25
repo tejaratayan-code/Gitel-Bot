@@ -17,7 +17,6 @@ import subprocess
 
 load_dotenv()
 
-# ====================== تنظیمات ======================
 API_ID = int(os.getenv("API_ID", 0))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
@@ -60,51 +59,23 @@ def get_db():
 def init_database():
     with get_db() as conn:
         with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS connections (
-                    telegram_id BIGINT PRIMARY KEY,
-                    bale_id BIGINT,
-                    connected BOOLEAN DEFAULT FALSE,
-                    daily_uploaded BIGINT DEFAULT 0,
-                    total_uploaded BIGINT DEFAULT 0,
-                    file_count BIGINT DEFAULT 0,
-                    last_reset_date DATE,
-                    github_token TEXT,
-                    github_repo VARCHAR(255) DEFAULT 'GitelUpload',
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-
+            cur.execute("CREATE TABLE IF NOT EXISTS connections (telegram_id BIGINT PRIMARY KEY, bale_id BIGINT, connected BOOLEAN DEFAULT FALSE, daily_uploaded BIGINT DEFAULT 0, total_uploaded BIGINT DEFAULT 0, file_count BIGINT DEFAULT 0, last_reset_date DATE, github_token TEXT, github_repo VARCHAR(255) DEFAULT 'GitelUpload', created_at DATETIME DEFAULT CURRENT_TIMESTAMP)")
             cur.execute("SHOW COLUMNS FROM connections")
             existing = {row['Field'] for row in cur.fetchall()}
-
-            columns = {
-                'bale_id': 'BIGINT',
-                'connected': 'BOOLEAN DEFAULT FALSE',
-                'daily_uploaded': 'BIGINT DEFAULT 0',
-                'total_uploaded': 'BIGINT DEFAULT 0',
-                'file_count': 'BIGINT DEFAULT 0',
-                'last_reset_date': 'DATE',
-                'github_token': 'TEXT',
-                'github_repo': 'VARCHAR(255) DEFAULT \'GitelUpload\''
-            }
-
-            for col, definition in columns.items():
+            for col, definition in {'bale_id': 'BIGINT', 'connected': 'BOOLEAN DEFAULT FALSE', 'daily_uploaded': 'BIGINT DEFAULT 0', 'total_uploaded': 'BIGINT DEFAULT 0', 'file_count': 'BIGINT DEFAULT 0', 'last_reset_date': 'DATE', 'github_token': 'TEXT', 'github_repo': "VARCHAR(255) DEFAULT 'GitelUpload'"}.items():
                 if col not in existing:
                     cur.execute(f"ALTER TABLE connections ADD COLUMN {col} {definition}")
-                    print(f"✅ ستون {col} اضافه شد.")
-
             conn.commit()
-    print("✅ دیتابیس با موفقیت ابتدایی‌سازی شد.")
+    print("✅ دیتابیس آماده است.")
 
 init_database()
 
 def get_expiration_minutes(size_mb: float) -> int:
-    if size_mb < 100:   return 10
+    if size_mb < 100: return 10
     elif size_mb < 300: return 20
     elif size_mb < 500: return 30
     elif size_mb < 700: return 40
-    else:               return int(size_mb / 1000) * 60 + 60
+    else: return int(size_mb / 1000) * 60 + 60
 
 def bale_polling():
     offset = 0
@@ -151,9 +122,7 @@ async def build_main_menu_text(row):
         daily_mb = (row.get("daily_uploaded") or 0) / (1024 * 1024)
         total_mb = (row.get("total_uploaded") or 0) / (1024 * 1024)
         github_status = "✅ متصل" if row.get("github_token") else "❌ متصل نیست"
-
     remaining_mb = max(0, 1024 - daily_mb)
-
     return f"━━━ 🤖 👋 منوی اصلی ━━━\n\n📤 فایل یا لینک خود را ارسال کنید.\n🔒 فایل‌ها با رمز یکبار مصرف قوی رمزگذاری می‌شوند.\n\n━━━━━━━ 📊 وضعیت حساب ━━━━━━━\n🏷 پلن: رایگان\nمحدودیت روزانه : 1024 MB\nمصرفی: {daily_mb:.1f} MB | باقی: {remaining_mb:.2f} MB\nوضعیت اتصال به بله : {status}\nوضعیت گیت‌هاب شخصی : {github_status}\n⏳ اعتبار لینک: 1 ساعت (1GB=1 H)\n\n📜 قوانین: محتوای غیرقانونی ممنوع | مسئولیت فایل‌ها با کاربر است.\n\n👇 فایل خود را ارسال کنید:"
 
 @app.on_message(filters.command("start"))
@@ -161,32 +130,25 @@ async def start_handler(client: Client, message: Message):
     tg_id = message.from_user.id
     row = await get_user_status(tg_id)
     text = await build_main_menu_text(row)
-
     buttons = []
     if row and row.get("connected"):
         buttons.append([InlineKeyboardButton("🔌 قطع اتصال به بله", callback_data="disconnect")])
     else:
         buttons.append([InlineKeyboardButton("🔗 اتصال به بله", callback_data="connect")])
-
     buttons.append([InlineKeyboardButton("🐙 اتصال گیت‌هاب شخصی", callback_data="connect_github")])
-
     if tg_id == ADMIN_ID:
         buttons.append([InlineKeyboardButton("⚙️ پنل مدیریت", callback_data="admin_panel")])
-
-    keyboard = InlineKeyboardMarkup(buttons)
-    await message.reply_text(text, reply_markup=keyboard)
+    await message.reply_text(text, reply_markup=InlineKeyboardMarkup(buttons))
 
 @app.on_callback_query()
 async def callback_handler(client, callback_query):
     data = callback_query.data
     tg_id = callback_query.from_user.id
     msg = callback_query.message
-
     if data == "connect":
         random_code = secrets.token_hex(8).upper()
         code = f"connect:Bale:{tg_id}:{random_code}"
         await msg.edit_text(f"🔗 کد اتصال شما:\n\n`{code}`\n\nاین کد را برای @{BALE_BOT_USERNAME} بفرستید.")
-
     elif data == "disconnect":
         with get_db() as conn:
             with conn.cursor() as cur:
@@ -194,15 +156,12 @@ async def callback_handler(client, callback_query):
                 conn.commit()
         row = await get_user_status(tg_id)
         text = await build_main_menu_text(row)
-        await msg.edit_text(text, reply_markup=InlineKeyboardMarkup([ [InlineKeyboardButton("🔗 اتصال به بله", callback_data="connect")], [InlineKeyboardButton("🐙 اتصال گیت‌هاب شخصی", callback_data="connect_github")] ]))
-
+        await msg.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔗 اتصال به بله", callback_data="connect")], [InlineKeyboardButton("🐙 اتصال گیت‌هاب شخصی", callback_data="connect_github")]]))
     elif data == "connect_github":
         waiting_for_github_token[tg_id] = True
         await msg.edit_text("🐙 **اتصال گیت‌هاب شخصی**\n\nتوکن گیت‌هاب خود را بفرستید (با ghp_ یا github_pat_ شروع می‌شود):\n\n⚠️ این توکن فقط برای آپلود فایل استفاده می‌شود و ذخیره می‌گردد.")
-
     elif data == "admin_panel" and tg_id == ADMIN_ID:
         await show_admin_panel(client, callback_query)
-
     elif data == "back_to_start":
         row = await get_user_status(tg_id)
         text = await build_main_menu_text(row)
@@ -215,7 +174,6 @@ async def callback_handler(client, callback_query):
         if tg_id == ADMIN_ID:
             buttons.append([InlineKeyboardButton("⚙️ پنل مدیریت", callback_data="admin_panel")])
         await msg.edit_text(text, reply_markup=InlineKeyboardMarkup(buttons))
-
     elif data.startswith("cancel:"):
         cancel_id = data.split(":")[1]
         cancel_flags[cancel_id] = True
@@ -227,23 +185,17 @@ async def callback_handler(client, callback_query):
 @app.on_message(filters.private & ~filters.command("start"))
 async def github_token_handler(client: Client, message: Message):
     tg_id = message.from_user.id
-
     if not waiting_for_github_token.get(tg_id, False):
         return
-
     if not message.text:
         return
-
     text = message.text.strip()
-
     if text.startswith("ghp_") or text.startswith("github_pat_"):
         headers = {"Authorization": f"token {text}", "Accept": "application/vnd.github.v3+json"}
         test = requests.get(f"{GITHUB_API}/user", headers=headers)
-
         if test.status_code == 200:
             user_data = test.json()
             github_username = user_data.get("login")
-
             repo_check = requests.get(f"{GITHUB_API}/repos/{github_username}/GitelUpload", headers=headers)
             if repo_check.status_code == 404:
                 create_repo = requests.post(f"{GITHUB_API}/user/repos", json={"name": "GitelUpload", "private": False, "description": "Bale Telegram Bot Uploads"}, headers=headers)
@@ -252,14 +204,11 @@ async def github_token_handler(client: Client, message: Message):
                 else:
                     await message.reply_text(f"❌ خطا در ساخت ریپو: {create_repo.text}")
                     return
-
             with get_db() as conn:
                 with conn.cursor() as cur:
                     cur.execute("UPDATE connections SET github_token=%s, github_repo='GitelUpload' WHERE telegram_id=%s", (text, tg_id))
                     conn.commit()
-
             waiting_for_github_token[tg_id] = False
-
             await message.reply_text(f"✅ **اتصال موفق!**\n\nگیت‌هاب شما ({github_username}) متصل شد.\nریپو: GitelUpload\n\nحالا می‌توانید فایل بفرستید.")
         else:
             await message.reply_text("❌ توکن نامعتبر است. لطفاً دوباره تلاش کنید.")
@@ -270,9 +219,7 @@ async def download_handler(client: Client, message: Message):
     tg_id = message.from_user.id
     cancel_id = str(message.id)
     cancel_flags[cancel_id] = False
-
     await message.reply_text("📥 فایل دریافت شد، در حال پردازش...")
-
     if message.photo:
         if isinstance(message.photo, list):
             file_attr = message.photo[-1]
@@ -280,38 +227,28 @@ async def download_handler(client: Client, message: Message):
             file_attr = message.photo
     else:
         file_attr = message.document or message.video or message.audio or message.voice
-
     if not file_attr:
         await message.reply_text("❌ فایل پشتیبانی نمی‌شود.")
         return
-
     file_name = getattr(file_attr, "file_name", f"file_{message.id}.jpg")
     destination = DOWNLOADS_PATH / file_name
-
     status = await message.reply_text(f"🚀 در حال دانلود `{file_name}`...", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=f"cancel:{cancel_id}")]]))
-
     status.start_time = time.time()
     status.prev_bytes = 0
     status.prev_time = time.time()
-
     try:
         await client.download_media(message=message, file_name=str(destination), progress=progress_callback, progress_args=(status, file_name, getattr(file_attr, "file_size", 0)))
-
         if cancel_flags.get(cancel_id, False):
             if destination.exists(): os.remove(destination)
             return
-
         file_size = destination.stat().st_size
         file_size_mb = file_size / (1024 * 1024)
         await status.edit_text(f"✅ دانلود کامل شد ({file_size_mb:.1f} MB).\n\n🗜 در حال فشرده‌سازی...")
-
         with get_db() as conn:
             with conn.cursor() as cur:
                 cur.execute("UPDATE connections SET daily_uploaded = daily_uploaded + %s, total_uploaded = total_uploaded + %s, file_count = file_count + 1 WHERE telegram_id=%s", (file_size, file_size, tg_id))
                 conn.commit()
-
         await upload_to_user_github(destination, file_name, status, client, message.chat.id, tg_id, cancel_id)
-
     except Exception as e:
         await status.edit_text(f"❌ خطا: {str(e)}")
 
@@ -326,7 +263,6 @@ async def progress_callback(current, total, status_msg, file_name, file_size):
     status_msg.prev_time = now
     speed_mb = speed / (1024 * 1024)
     eta = "—" if speed <= 0 else (f"{int((total-current)/speed)} ثانیه" if (total-current)/speed < 60 else f"{(total-current)/speed/60:.1f} دقیقه")
-
     try:
         text = f"📥 **دریافت فایل از تلگرام**\n\n[{bar}] {percent:.1f}%\n📦 {current / (1024*1024):.1f} MB از {total / (1024*1024):.1f} MB\n⚡ سرعت: {speed_mb:.2f} MB/s\n⏱ زمان باقی‌مانده: {eta}"
         await status_msg.edit_text(text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=f"cancel:{status_msg.id}")]])
@@ -336,71 +272,51 @@ async def progress_callback(current, total, status_msg, file_name, file_size):
 async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Message, client, chat_id, user_id, cancel_id):
     try:
         row = await get_user_status(user_id)
-
         if not row or not row.get("github_token"):
             await status_msg.edit_text("❌ **گیت‌هاب شخصی متصل نیست!**\n\nلطفاً از منوی اصلی گزینه '🐙 اتصال گیت‌هاب شخصی' را انتخاب کنید و توکن خود را بفرستید.")
             if file_path.exists(): os.remove(file_path)
             return
-
         user_token = row["github_token"]
         github_repo = row.get("github_repo", "GitelUpload")
-
         password = secrets.token_urlsafe(64)
         zip_path = file_path.with_suffix(".7z")
         random_num = random.randint(100000, 999999)
         branch_name = f"user_{user_id}_{random_num}"
-
         file_size_mb = file_path.stat().st_size / (1024 * 1024)
         await status_msg.edit_text(f"🗜 **در حال فشرده‌سازی** ({file_size_mb:.1f} MB)\n\nلطفاً صبر کنید...")
-
         with py7zr.SevenZipFile(zip_path, mode='w', password=password) as z:
             z.write(file_path, arcname=file_path.name)
-
         if cancel_flags.get(cancel_id, False):
             if file_path.exists(): os.remove(file_path)
             if zip_path.exists(): os.remove(zip_path)
             return
-
         await status_msg.edit_text("☁️ **در حال آپلود به گیت‌هاب شما**\n\nلطفاً صبر کنید...")
-
         headers = {"Authorization": f"token {user_token}", "Accept": "application/vnd.github.v3+json"}
         user_info = requests.get(f"{GITHUB_API}/user", headers=headers).json()
         github_username = user_info.get("login")
-
         repo_info = requests.get(f"{GITHUB_API}/repos/{github_username}/{github_repo}", headers=headers).json()
         default_branch = repo_info.get("default_branch", "main")
-
         ref = requests.get(f"{GITHUB_API}/repos/{github_username}/{github_repo}/git/ref/heads/{default_branch}", headers=headers).json()
         base_sha = ref["object"]["sha"]
-
         requests.post(f"{GITHUB_API}/repos/{github_username}/{github_repo}/git/refs", json={"ref": f"refs/heads/{branch_name}", "sha": base_sha}, headers=headers)
-
         with open(zip_path, "rb") as f:
             content = f.read()
         content_b64 = base64.b64encode(content).decode()
-
         put_url = f"{GITHUB_API}/repos/{github_username}/{github_repo}/contents/{zip_path.name}"
         put_data = {"message": f"Upload {file_name}", "content": content_b64, "branch": branch_name}
-
         response = requests.put(put_url, json=put_data, headers=headers)
         if response.status_code not in [200, 201]:
             raise Exception(f"Failed to upload: {response.text}")
-
         download_link = f"https://codeload.github.com/{github_username}/{github_repo}/zip/refs/heads/{branch_name}"
-
         size_mb = file_path.stat().st_size / (1024 * 1024)
         minutes = get_expiration_minutes(size_mb)
         expire_time = datetime.now() + timedelta(minutes=minutes)
         expire_str = expire_time.strftime("%Y/%m/%d — %H:%M")
-
         telegram_text = f"━━━ 🟢 🟢 آپلود موفق! 🎉 ━━━\n\nفایل `{file_name}` با موفقیت آپلود شد.\n\n🔗 لینک: {download_link}\n\n🔑 رمز: `{password}`\n\n📦 حجم: {size_mb:.1f} MB\n⏳ اعتبار تا: {expire_str}"
-
         await client.send_message(chat_id, telegram_text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 بازگشت به منوی اصلی", callback_data="back_to_start")]]))
         await status_msg.edit_text("✅ **آپلود کامل شد!**\n\nلینک دانلود برای شما ارسال شد.")
-
         if file_path.exists(): os.remove(file_path)
         if zip_path.exists(): os.remove(zip_path)
-
     except Exception as e:
         error_msg = f"❌ خطا در آپلود: {str(e)}"
         print(error_msg)
@@ -413,7 +329,6 @@ async def upload_direct_to_bale(file_path: Path, file_name: str, status_msg: Mes
             files = {"document": (file_name, f)}
             data = {"chat_id": bale_id, "caption": f"📤 {file_name}"}
             response = requests.post(url, data=data, files=files, timeout=300)
-
         if response.status_code == 200:
             await status_msg.edit_text("✅ فایل به بله ارسال شد.")
             await client.send_message(chat_id, f"✅ فایل `{file_name}` مستقیم به بله شما ارسال شد.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 بازگشت به منوی اصلی", callback_data="back_to_start")]]))
