@@ -309,7 +309,6 @@ async def download_handler(client: Client, message: Message):
     cancel_id = str(message.id)
     cancel_flags[cancel_id] = False
 
-    # Always start upload process (no early return for missing GitHub token)
     await message.reply_text("📥 فایل دریافت شد، در حال پردازش...")
 
     if message.photo:
@@ -350,7 +349,7 @@ async def download_handler(client: Client, message: Message):
 
         file_size = destination.stat().st_size
         file_size_mb = file_size / (1024 * 1024)
-        await status.edit_text(f"✅ دانلود کامل شد ({file_size_mb:.1f} MB).")
+        await status.edit_text(f"✅ دانلود کامل شد ({file_size_mb:.1f} MB).\n\n🗜 در حال فشرده‌سازی...")
 
         with get_db() as conn:
             with conn.cursor() as cur:
@@ -363,7 +362,6 @@ async def download_handler(client: Client, message: Message):
                 """, (file_size, file_size, tg_id))
                 conn.commit()
 
-        # Upload to user's GitHub (will ask for token if not connected)
         await upload_to_user_github(destination, file_name, status, client, message.chat.id, tg_id, cancel_id)
 
     except Exception as e:
@@ -417,7 +415,9 @@ async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Mes
         branch_name = f"user_{user_id}_{random_num}"
 
         file_size_mb = file_path.stat().st_size / (1024 * 1024)
-        await status_msg.edit_text(f"🗜 در حال فشرده‌سازی فایل ({file_size_mb:.1f} MB)...\nلطفاً صبر کنید...", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=f"cancel:{cancel_id}")]]))
+
+        # Stage 2: Compression
+        await status_msg.edit_text(f"🗜 **در حال فشرده‌سازی** ({file_size_mb:.1f} MB)\n\nلطفاً صبر کنید...")
 
         with py7zr.SevenZipFile(zip_path, mode='w', password=password) as z:
             z.write(file_path, arcname=file_path.name)
@@ -427,7 +427,8 @@ async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Mes
             if zip_path.exists(): os.remove(zip_path)
             return
 
-        await status_msg.edit_text("☁️ در حال آپلود به گیت‌هاب شما...", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("❌ کنسل", callback_data=f"cancel:{cancel_id}")]]))
+        # Stage 3: Upload to GitHub
+        await status_msg.edit_text("☁️ **در حال آپلود به گیت‌هاب شما**\n\nلطفاً صبر کنید...")
 
         headers = {
             "Authorization": f"token {user_token}",
@@ -470,7 +471,7 @@ async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Mes
         telegram_text = f"━━━ 🟢 🟢 آپلود موفق! 🎉 ━━━\n\nفایل `{file_name}` با موفقیت آپلود شد.\n\n🔗 لینک: {download_link}\n\n🔑 رمز: `{password}`\n\n📦 حجم: {size_mb:.1f} MB\n⏳ اعتبار تا: {expire_str}"
 
         await client.send_message(chat_id, telegram_text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 بازگشت به منوی اصلی", callback_data="back_to_start")]]))
-        await status_msg.edit_text("✅ آپلود به گیت‌هاب شما انجام شد.")
+        await status_msg.edit_text("✅ **آپلود کامل شد!**\n\nلینک دانلود برای شما ارسال شد.")
 
         if file_path.exists(): os.remove(file_path)
         if zip_path.exists(): os.remove(zip_path)
