@@ -97,9 +97,10 @@ def bale_polling():
                                     with conn.cursor() as cur:
                                         cur.execute("INSERT INTO connections (telegram_id, bale_id, connected) VALUES (%s, %s, TRUE) ON DUPLICATE KEY UPDATE bale_id=%s, connected=TRUE", (tg_id, bale_chat_id, bale_chat_id))
                                         conn.commit()
-                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"])
+                                msg = "✅ اتصال با موفقیت انجام شد!"
+                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": msg})
                                 try:
-                                    app.send_message(tg_id, "✅ اتصال به بله با موفقیت انجام شد!")
+                                    app.send_message(tg_id, msg)
                                 except:
                                     pass
         except:
