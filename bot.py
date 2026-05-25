@@ -130,7 +130,7 @@ def bale_polling():
                                             (tg_id, bale_chat_id, bale_chat_id)
                                         )
                                         conn.commit()
-                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"})
+                                requests.post(f"{BASE_URL}{BALE_TOKEN}/sendMessage", json={"chat_id": bale_chat_id, "text": "✅ اتصال با موفقیت انجام شد!"])
                                 try:
                                     app.send_message(tg_id, "✅ اتصال به بله با موفقیت انجام شد!")
                                 except:
@@ -309,36 +309,7 @@ async def download_handler(client: Client, message: Message):
     cancel_id = str(message.id)
     cancel_flags[cancel_id] = False
 
-    row = await get_user_status(tg_id)
-    if not row or not row.get("github_token"):
-        await message.reply_text(
-            "❌ **گیت‌هاب شخصی متصل نیست!**\n\n"
-            "لطفاً ابتدا از منوی اصلی گزینه '🐙 اتصال گیت‌هاب شخصی' را انتخاب کنید."
-        )
-        return
-
-    file_name = getattr(message.document, "file_name", "") if message.document else ""
-    ext = os.path.splitext(file_name)[1].lower()
-    if ext in DANGEROUS_EXT:
-        await message.reply_text("❌ این فرمت فایل به دلایل امنیتی مجاز نیست.")
-        return
-
-    with get_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT daily_uploaded, last_reset_date FROM connections WHERE telegram_id=%s", (tg_id,))
-            row = cur.fetchone()
-            today = date.today()
-            if not row or row["last_reset_date"] != today:
-                cur.execute("UPDATE connections SET daily_uploaded=0, last_reset_date=%s WHERE telegram_id=%s", (today, tg_id))
-                conn.commit()
-                daily_used = 0
-            else:
-                daily_used = row["daily_uploaded"] or 0
-
-    if daily_used >= DAILY_LIMIT:
-        await message.reply_text("❌ محدودیت روزانه شما (۱ گیگ) تمام شده است.")
-        return
-
+    # Always start upload process (no early return for missing GitHub token)
     await message.reply_text("📥 فایل دریافت شد، در حال پردازش...")
 
     if message.photo:
@@ -392,6 +363,7 @@ async def download_handler(client: Client, message: Message):
                 """, (file_size, file_size, tg_id))
                 conn.commit()
 
+        # Upload to user's GitHub (will ask for token if not connected)
         await upload_to_user_github(destination, file_name, status, client, message.chat.id, tg_id, cancel_id)
 
     except Exception as e:
@@ -426,8 +398,14 @@ async def progress_callback(current, total, status_msg, file_name, file_size):
 async def upload_to_user_github(file_path: Path, file_name: str, status_msg: Message, client, chat_id, user_id, cancel_id):
     try:
         row = await get_user_status(user_id)
+
         if not row or not row.get("github_token"):
-            await status_msg.edit_text("❌ توکن گیت‌هاب یافت نشد!")
+            await status_msg.edit_text(
+                "❌ **گیت‌هاب شخصی متصل نیست!**\n\n"
+                "لطفاً از منوی اصلی گزینه '🐙 اتصال گیت‌هاب شخصی' را انتخاب کنید و توکن خود را بفرستید."
+            )
+            if file_path.exists():
+                os.remove(file_path)
             return
 
         user_token = row["github_token"]
